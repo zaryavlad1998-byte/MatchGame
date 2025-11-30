@@ -15,12 +15,10 @@
             overflow-x: hidden;
         }
 
-        /* Убираем переносы строк */
         * {
             box-sizing: border-box;
         }
 
-        /* Плавная анимация */
         .fade-in {
             animation: fadeIn 0.5s ease-in;
         }
@@ -30,7 +28,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Убираем стрелки у input type="number" */
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
             -webkit-appearance: none;
@@ -40,12 +37,24 @@
         input[type="number"] {
             -moz-appearance: textfield;
         }
+
+        .home-button {
+            transition: all 0.3s ease;
+        }
+
+        .home-button:hover {
+            transform: scale(1.1);
+        }
+
+        .home-button:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
         function MultiplicationGame() {
           const [gameState, setGameState] = useState('setup');
@@ -80,27 +89,30 @@
             }
           }, []);
 
-          const speak = (text) => {
+          // Оптимизированная функция озвучивания
+          const speak = useCallback((text) => {
             if (!soundEnabled) return;
             try {
+              window.speechSynthesis.cancel();
               const utterance = new SpeechSynthesisUtterance(text);
               utterance.lang = 'ru-RU';
               utterance.rate = 0.9;
               utterance.pitch = 1.2;
               utterance.volume = 1;
-              window.speechSynthesis.cancel();
               window.speechSynthesis.speak(utterance);
             } catch (e) {
               console.log('Speech not supported');
             }
-          };
+          }, [soundEnabled]);
 
-          const playSound = (frequency, duration, type = 'sine') => {
+          // Оптимизированная функция звуков
+          const playSound = useCallback((frequency, duration, type = 'sine') => {
             if (!soundEnabled || !audioContextRef.current) return;
             try {
               const ctx = audioContextRef.current;
               const oscillator = ctx.createOscillator();
               const gainNode = ctx.createGain();
+
               oscillator.connect(gainNode);
               gainNode.connect(ctx.destination);
               oscillator.frequency.value = frequency;
@@ -110,42 +122,50 @@
               oscillator.start(ctx.currentTime);
               oscillator.stop(ctx.currentTime + duration);
             } catch (e) {
-              console.log('Sound error');
+              console.log('Sound error:', e);
             }
-          };
+          }, [soundEnabled]);
 
-          const playCorrectSound = () => {
+          const playCorrectSound = useCallback(() => {
             playSound(523.25, 0.1);
             setTimeout(() => playSound(659.25, 0.1), 100);
             setTimeout(() => playSound(783.99, 0.2), 200);
-          };
+          }, [playSound]);
 
-          const playWrongSound = () => playSound(200, 0.3, 'sawtooth');
+          const playWrongSound = useCallback(() => {
+            playSound(200, 0.3, 'sawtooth');
+          }, [playSound]);
 
-          const playStreakSound = () => {
+          const playStreakSound = useCallback(() => {
             playSound(880, 0.15);
             setTimeout(() => playSound(1046.5, 0.2), 150);
-          };
+          }, [playSound]);
 
-          const toggleOperation = (op) => {
-            const newOps = { ...operations, [op]: !operations[op] };
-            const hasAtLeastOne = Object.values(newOps).some(v => v);
-            if (hasAtLeastOne) {
-              setOperations(newOps);
+          const toggleOperation = useCallback((op) => {
+            setOperations(prev => {
+              const newOps = { ...prev, [op]: !prev[op] };
+              const hasAtLeastOne = Object.values(newOps).some(v => v);
+              return hasAtLeastOne ? newOps : prev;
+            });
+          }, []);
+
+          const goHome = useCallback(() => {
+            if (gameState === 'playing') {
+              const confirmed = window.confirm('Вы уверены, что хотите выйти? Прогресс игры будет потерян.');
+              if (!confirmed) return;
             }
-          };
 
-          const startGame = () => {
-            setGameState('playing');
+            setGameState('setup');
             setScore(0);
             setCurrentRound(0);
             setStreak(0);
             setBestStreak(0);
             setGameHistory([]);
-            generateQuestion();
-          };
+            setMessage('');
+            setAnswer('');
+          }, [gameState]);
 
-          const generateQuestion = (incrementRound = false) => {
+          const generateQuestion = useCallback((incrementRound = false) => {
             if (incrementRound) {
               setCurrentRound(prev => prev + 1);
             }
@@ -179,9 +199,20 @@
             setMessage('');
             setAttempts(2);
             setLives(2);
-          };
+          }, [operations]);
 
-          const calculateCorrectAnswer = () => {
+          const startGame = useCallback(() => {
+            setGameState('playing');
+            setScore(0);
+            setCurrentRound(0);
+            setStreak(0);
+            setBestStreak(0);
+            setGameHistory([]);
+            setMessage('');
+            generateQuestion();
+          }, [generateQuestion]);
+
+          const calculateCorrectAnswer = useCallback(() => {
             switch(currentOperation) {
               case '×': return num1 * num2;
               case '÷': return num1 / num2;
@@ -189,38 +220,45 @@
               case '−': return num1 - num2;
               default: return 0;
             }
-          };
+          }, [currentOperation, num1, num2]);
 
-          const showResults = () => {
+          const showResults = useCallback(() => {
             setGameState('results');
-          };
+          }, []);
 
-          const checkAnswer = () => {
+          const checkAnswer = useCallback(() => {
             const userAnswer = parseInt(answer);
             const correctAnswer = calculateCorrectAnswer();
             const isCorrect = userAnswer === correctAnswer;
+            const questionKey = `${num1} ${currentOperation} ${num2}`;
 
             if (isCorrect) {
               playCorrectSound();
               speak('Правильно! Ты молодец!');
-              setScore(score + 1);
-              setStreak(streak + 1);
-              if (streak + 1 > bestStreak) setBestStreak(streak + 1);
-              if ((streak + 1) % 5 === 0) setTimeout(playStreakSound, 300);
+              setScore(prev => prev + 1);
+              setStreak(prev => {
+                const newStreak = prev + 1;
+                setBestStreak(current => Math.max(current, newStreak));
+                if (newStreak % 5 === 0) setTimeout(playStreakSound, 300);
+                return newStreak;
+              });
               setMessage('🎉 Правильно! Ты молодец!');
 
-              const existingWrong = gameHistory.find(h => h.question === `${num1} ${currentOperation} ${num2}` && !h.isCorrect);
-              setGameHistory([...gameHistory.filter(h => !(h.question === `${num1} ${currentOperation} ${num2}` && !h.isCorrect)), {
-                question: `${num1} ${currentOperation} ${num2}`,
-                userAnswer,
-                correctAnswer,
-                isCorrect: true,
-                wrongAnswers: existingWrong?.wrongAnswers || []
-              }]);
+              setGameHistory(prev => {
+                const existingWrong = prev.find(h => h.question === questionKey && !h.isCorrect);
+                const filtered = prev.filter(h => !(h.question === questionKey && !h.isCorrect));
+                return [...filtered, {
+                  question: questionKey,
+                  userAnswer,
+                  correctAnswer,
+                  isCorrect: true,
+                  wrongAnswers: existingWrong?.wrongAnswers || []
+                }];
+              });
 
               const nextRound = currentRound + 1;
               if (nextRound >= totalRounds) {
-                setTimeout(() => showResults(), 2000);
+                setTimeout(showResults, 2000);
               } else {
                 setTimeout(() => generateQuestion(true), 2000);
               }
@@ -228,19 +266,22 @@
               if (attempts > 0) {
                 playWrongSound();
                 speak('Подумай ещё');
-                setAttempts(attempts - 1);
-                setLives(lives - 1);
+                setAttempts(prev => prev - 1);
+                setLives(prev => prev - 1);
                 setMessage('🤔 Подумай ещё');
 
-                const existingEntry = gameHistory.find(h => h.question === `${num1} ${currentOperation} ${num2}` && !h.isCorrect);
-                const wrongAnswers = existingEntry?.wrongAnswers ? [...existingEntry.wrongAnswers, userAnswer] : [userAnswer];
-                setGameHistory([...gameHistory.filter(h => !(h.question === `${num1} ${currentOperation} ${num2}` && !h.isCorrect)), {
-                  question: `${num1} ${currentOperation} ${num2}`,
-                  userAnswer,
-                  correctAnswer,
-                  isCorrect: false,
-                  wrongAnswers
-                }]);
+                setGameHistory(prev => {
+                  const existingEntry = prev.find(h => h.question === questionKey && !h.isCorrect);
+                  const wrongAnswers = existingEntry?.wrongAnswers ? [...existingEntry.wrongAnswers, userAnswer] : [userAnswer];
+                  const filtered = prev.filter(h => !(h.question === questionKey && !h.isCorrect));
+                  return [...filtered, {
+                    question: questionKey,
+                    userAnswer,
+                    correctAnswer,
+                    isCorrect: false,
+                    wrongAnswers
+                  }];
+                });
                 setAnswer('');
               } else {
                 playWrongSound();
@@ -248,41 +289,55 @@
                 setStreak(0);
                 setMessage(`❌ Неверно. Правильный ответ: ${correctAnswer}`);
 
-                const existingEntry = gameHistory.find(h => h.question === `${num1} ${currentOperation} ${num2}` && !h.isCorrect);
-                const wrongAnswers = existingEntry?.wrongAnswers ? [...existingEntry.wrongAnswers, userAnswer] : [userAnswer];
-                setGameHistory([...gameHistory.filter(h => !(h.question === `${num1} ${currentOperation} ${num2}` && !h.isCorrect)), {
-                  question: `${num1} ${currentOperation} ${num2}`,
-                  userAnswer,
-                  correctAnswer,
-                  isCorrect: false,
-                  wrongAnswers
-                }]);
+                setGameHistory(prev => {
+                  const existingEntry = prev.find(h => h.question === questionKey && !h.isCorrect);
+                  const wrongAnswers = existingEntry?.wrongAnswers ? [...existingEntry.wrongAnswers, userAnswer] : [userAnswer];
+                  const filtered = prev.filter(h => !(h.question === questionKey && !h.isCorrect));
+                  return [...filtered, {
+                    question: questionKey,
+                    userAnswer,
+                    correctAnswer,
+                    isCorrect: false,
+                    wrongAnswers
+                  }];
+                });
 
                 const nextRound = currentRound + 1;
                 if (nextRound >= totalRounds) {
-                  setTimeout(() => showResults(), 2500);
+                  setTimeout(showResults, 2500);
                 } else {
                   setTimeout(() => generateQuestion(true), 2500);
                 }
               }
             }
-          };
+          }, [answer, calculateCorrectAnswer, num1, num2, currentOperation, attempts, currentRound, totalRounds, playCorrectSound, playWrongSound, playStreakSound, speak, showResults, generateQuestion]);
 
-          const handleKeyPress = (e) => {
-            if (e.key === 'Enter' && answer !== '') checkAnswer();
-          };
+          const handleKeyPress = useCallback((e) => {
+            if (e.key === 'Enter' && answer !== '') {
+              checkAnswer();
+            }
+          }, [answer, checkAnswer]);
 
-          const resetGame = () => {
+          const resetGame = useCallback(() => {
             setGameState('setup');
             setTotalRounds(10);
-          };
+            setScore(0);
+            setCurrentRound(0);
+            setStreak(0);
+            setBestStreak(0);
+            setGameHistory([]);
+            setMessage('');
+            setAnswer('');
+          }, []);
 
-          const percentage = totalRounds > 0 ? Math.round((score / totalRounds) * 100) : 0;
+          const percentage = useMemo(() => {
+            return totalRounds > 0 ? Math.round((score / totalRounds) * 100) : 0;
+          }, [score, totalRounds]);
 
-          const mathBg = {
+          const mathBg = useMemo(() => ({
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='5' y='20' font-size='20' fill='%23e0e7ff' opacity='0.3'%3E+%3C/text%3E%3Ctext x='35' y='45' font-size='20' fill='%23ddd6fe' opacity='0.3'%3E×%3C/text%3E%3Ctext x='15' y='50' font-size='18' fill='%23fce7f3' opacity='0.3'%3E=%3C/text%3E%3C/svg%3E")`,
             backgroundSize: '60px 60px'
-          };
+          }), []);
 
           // ЭКРАН НАСТРОЙКИ ИГРЫ
           if (gameState === 'setup') {
@@ -304,46 +359,24 @@
                       🎯 Какие операции?
                     </label>
                     <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => toggleOperation('multiply')}
-                        className={`py-3 sm:py-4 rounded-xl font-black text-xl sm:text-2xl transition-all transform hover:scale-105 ${
-                          operations.multiply
-                            ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg'
-                            : 'bg-white text-purple-500 border-2 border-purple-300'
-                        }`}
-                      >
-                        ×
-                      </button>
-                      <button
-                        onClick={() => toggleOperation('divide')}
-                        className={`py-3 sm:py-4 rounded-xl font-black text-xl sm:text-2xl transition-all transform hover:scale-105 ${
-                          operations.divide
-                            ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg'
-                            : 'bg-white text-blue-500 border-2 border-blue-300'
-                        }`}
-                      >
-                        ÷
-                      </button>
-                      <button
-                        onClick={() => toggleOperation('add')}
-                        className={`py-3 sm:py-4 rounded-xl font-black text-xl sm:text-2xl transition-all transform hover:scale-105 ${
-                          operations.add
-                            ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg'
-                            : 'bg-white text-green-500 border-2 border-green-300'
-                        }`}
-                      >
-                        +
-                      </button>
-                      <button
-                        onClick={() => toggleOperation('subtract')}
-                        className={`py-3 sm:py-4 rounded-xl font-black text-xl sm:text-2xl transition-all transform hover:scale-105 ${
-                          operations.subtract
-                            ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg'
-                            : 'bg-white text-orange-500 border-2 border-orange-300'
-                        }`}
-                      >
-                        −
-                      </button>
+                      {[
+                        { key: 'multiply', label: '×', color: 'purple' },
+                        { key: 'divide', label: '÷', color: 'blue' },
+                        { key: 'add', label: '+', color: 'green' },
+                        { key: 'subtract', label: '−', color: 'orange' }
+                      ].map(({ key, label, color }) => (
+                        <button
+                          key={key}
+                          onClick={() => toggleOperation(key)}
+                          className={`py-3 sm:py-4 rounded-xl font-black text-xl sm:text-2xl transition-all transform hover:scale-105 ${
+                            operations[key]
+                              ? `bg-gradient-to-br from-${color}-500 to-${color}-600 text-white shadow-lg`
+                              : `bg-white text-${color}-500 border-2 border-${color}-300`
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
@@ -472,14 +505,20 @@
 
                 <div className="text-center mb-5 sm:mb-6">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex-1"></div>
+                    <button
+                      onClick={goHome}
+                      className="home-button text-3xl sm:text-4xl bg-transparent border-none cursor-pointer"
+                      title="Вернуться на главную"
+                    >
+                      🏠
+                    </button>
                     <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 flex-1 whitespace-nowrap">
                       🔢 Математика 🔢
                     </h1>
                     <button
                       onClick={() => setSoundEnabled(!soundEnabled)}
-                      className="flex-1 flex justify-end text-2xl sm:text-3xl"
-                      style={{background: 'none', border: 'none', cursor: 'pointer'}}
+                      className="text-2xl sm:text-3xl bg-transparent border-none cursor-pointer"
+                      title={soundEnabled ? 'Выключить звук' : 'Включить звук'}
                     >
                       {soundEnabled ? '🔊' : '🔇'}
                     </button>
@@ -540,7 +579,7 @@
                       <input
                         type="text"
                         inputMode="numeric"
-                        pattern="[0-9]*"
+                        pattern="[0-9-]*"
                         value={answer}
                         onChange={(e) => {
                           const value = e.target.value.replace(/[^0-9-]/g, '');
