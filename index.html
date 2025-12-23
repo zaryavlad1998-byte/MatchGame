@@ -89,7 +89,6 @@
             }
           }, []);
 
-          // Оптимизированная функция озвучивания
           const speak = useCallback((text) => {
             if (!soundEnabled) return;
             try {
@@ -105,7 +104,6 @@
             }
           }, [soundEnabled]);
 
-          // Оптимизированная функция звуков
           const playSound = useCallback((frequency, duration, type = 'sine') => {
             if (!soundEnabled || !audioContextRef.current) return;
             try {
@@ -246,13 +244,19 @@
 
               setGameHistory(prev => {
                 const existingWrong = prev.find(h => h.question === questionKey && !h.isCorrect);
-                const filtered = prev.filter(h => !(h.question === questionKey && !h.isCorrect));
-                return [...filtered, {
+                if (existingWrong) {
+                  return prev.map(h =>
+                    h.question === questionKey && !h.isCorrect
+                      ? { ...h, solvedCorrectlyAfter: userAnswer }
+                      : h
+                  );
+                }
+                return [...prev, {
                   question: questionKey,
                   userAnswer,
                   correctAnswer,
                   isCorrect: true,
-                  wrongAnswers: existingWrong?.wrongAnswers || []
+                  wrongAnswers: []
                 }];
               });
 
@@ -335,11 +339,10 @@
           }, [score, totalRounds]);
 
           const mathBg = useMemo(() => ({
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='5' y='20' font-size='20' fill='%23e0e7ff' opacity='0.3'%3E+%3C/text%3E%3Ctext x='35' y='45' font-size='20' fill='%23ddd6fe' opacity='0.3'%3E×%3C/text%3E%3Ctext x='15' y='50' font-size='18' fill='%23fce7f3' opacity='0.3'%3E=%3C/text%3E%3C/svg%3E")`,
+            backgroundImage: `url("image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='5' y='20' font-size='20' fill='%23e0e7ff' opacity='0.3'%3E+%3C/text%3E%3Ctext x='35' y='45' font-size='20' fill='%23ddd6fe' opacity='0.3'%3E×%3C/text%3E%3Ctext x='15' y='50' font-size='18' fill='%23fce7f3' opacity='0.3'%3E=%3C/text%3E%3C/svg%3E")`,
             backgroundSize: '60px 60px'
           }), []);
 
-          // ЭКРАН НАСТРОЙКИ ИГРЫ
           if (gameState === 'setup') {
             return (
               <div className="min-h-screen w-full bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 flex items-center justify-center p-4 sm:p-6 md:p-8" style={mathBg}>
@@ -419,7 +422,6 @@
             );
           }
 
-          // ЭКРАН РЕЗУЛЬТАТОВ
           if (gameState === 'results') {
             const grade = percentage >= 90 ? '🏆' : percentage >= 70 ? '⭐' : percentage >= 50 ? '👍' : '💪';
 
@@ -477,6 +479,11 @@
                                 Попытки: {item.wrongAnswers.join(', ')}
                               </span>
                             )}
+                            {item.solvedCorrectlyAfter !== undefined && (
+                              <span className="text-xs sm:text-sm text-green-700 bg-green-50 px-2 py-1 rounded border border-green-300 whitespace-nowrap">
+                                Потом верно: {item.solvedCorrectlyAfter}
+                              </span>
+                            )}
                             <span className={`text-xl sm:text-2xl ${item.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
                               {item.isCorrect ? '✓' : '✗'}
                             </span>
@@ -497,7 +504,6 @@
             );
           }
 
-          // ЭКРАН ИГРЫ
           return (
             <div className="min-h-screen w-full bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 flex items-center justify-center p-4 sm:p-6 md:p-8" style={mathBg}>
               <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-2xl border-4 border-purple-400 relative overflow-hidden fade-in">
