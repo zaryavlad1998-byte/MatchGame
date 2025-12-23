@@ -72,8 +72,6 @@
           const [score, setScore] = useState(0);
           const [currentRound, setCurrentRound] = useState(0);
           const [message, setMessage] = useState('');
-          const [streak, setStreak] = useState(0);
-          const [bestStreak, setBestStreak] = useState(0);
           const [soundEnabled, setSoundEnabled] = useState(true);
           const [attempts, setAttempts] = useState(2);
           const [lives, setLives] = useState(2);
@@ -134,11 +132,6 @@
             playSound(200, 0.3, 'sawtooth');
           }, [playSound]);
 
-          const playStreakSound = useCallback(() => {
-            playSound(880, 0.15);
-            setTimeout(() => playSound(1046.5, 0.2), 150);
-          }, [playSound]);
-
           const toggleOperation = useCallback((op) => {
             setOperations(prev => {
               const newOps = { ...prev, [op]: !prev[op] };
@@ -156,8 +149,6 @@
             setGameState('setup');
             setScore(0);
             setCurrentRound(0);
-            setStreak(0);
-            setBestStreak(0);
             setGameHistory([]);
             setMessage('');
             setAnswer('');
@@ -195,7 +186,7 @@
             setNum2(n2);
             setAnswer('');
             setMessage('');
-            setAttempts(2);
+            setAttempts(1);
             setLives(2);
           }, [operations]);
 
@@ -203,8 +194,6 @@
             setGameState('playing');
             setScore(0);
             setCurrentRound(0);
-            setStreak(0);
-            setBestStreak(0);
             setGameHistory([]);
             setMessage('');
             generateQuestion();
@@ -234,12 +223,6 @@
               playCorrectSound();
               speak('Правильно! Ты молодец!');
               setScore(prev => prev + 1);
-              setStreak(prev => {
-                const newStreak = prev + 1;
-                setBestStreak(current => Math.max(current, newStreak));
-                if (newStreak % 5 === 0) setTimeout(playStreakSound, 300);
-                return newStreak;
-              });
               setMessage('🎉 Правильно! Ты молодец!');
 
               setGameHistory(prev => {
@@ -290,7 +273,6 @@
               } else {
                 playWrongSound();
                 speak(`Неверно. Правильный ответ ${correctAnswer}`);
-                setStreak(0);
                 setMessage(`❌ Неверно. Правильный ответ: ${correctAnswer}`);
 
                 setGameHistory(prev => {
@@ -314,7 +296,7 @@
                 }
               }
             }
-          }, [answer, calculateCorrectAnswer, num1, num2, currentOperation, attempts, currentRound, totalRounds, playCorrectSound, playWrongSound, playStreakSound, speak, showResults, generateQuestion]);
+          }, [answer, calculateCorrectAnswer, num1, num2, currentOperation, attempts, currentRound, totalRounds, playCorrectSound, playWrongSound, speak, showResults, generateQuestion]);
 
           const handleKeyPress = useCallback((e) => {
             if (e.key === 'Enter' && answer !== '') {
@@ -327,16 +309,18 @@
             setTotalRounds(10);
             setScore(0);
             setCurrentRound(0);
-            setStreak(0);
-            setBestStreak(0);
             setGameHistory([]);
             setMessage('');
             setAnswer('');
           }, []);
 
+          const firstTryCorrectCount = useMemo(() => {
+            return gameHistory.filter(item => item.isCorrect).length;
+          }, [gameHistory]);
+
           const percentage = useMemo(() => {
-            return totalRounds > 0 ? Math.round((score / totalRounds) * 100) : 0;
-          }, [score, totalRounds]);
+            return totalRounds > 0 ? Math.round((firstTryCorrectCount / totalRounds) * 100) : 0;
+          }, [firstTryCorrectCount, totalRounds]);
 
           const mathBg = useMemo(() => ({
             backgroundImage: `url("image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='5' y='20' font-size='20' fill='%23e0e7ff' opacity='0.3'%3E+%3C/text%3E%3Ctext x='35' y='45' font-size='20' fill='%23ddd6fe' opacity='0.3'%3E×%3C/text%3E%3Ctext x='15' y='50' font-size='18' fill='%23fce7f3' opacity='0.3'%3E=%3C/text%3E%3C/svg%3E")`,
@@ -442,8 +426,8 @@
 
                   <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
                     <div className="bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
-                      <div className="text-3xl sm:text-4xl font-black text-white">{score}</div>
-                      <div className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">✓ Правильно</div>
+                      <div className="text-3xl sm:text-4xl font-black text-white">{firstTryCorrectCount}</div>
+                      <div className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">✓ С 1 раза</div>
                     </div>
                     <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
                       <div className="text-3xl sm:text-4xl font-black text-white">{totalRounds}</div>
@@ -452,12 +436,6 @@
                     <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
                       <div className="text-3xl sm:text-4xl font-black text-white">{percentage}%</div>
                       <div className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">📊 Процент</div>
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl p-3 sm:p-4 mb-6 border-2 border-purple-300">
-                    <div className="text-center text-lg sm:text-xl font-black text-purple-700">
-                      ⭐ Лучшая серия: {bestStreak} подряд! ⭐
                     </div>
                   </div>
 
@@ -505,7 +483,7 @@
           }
 
           return (
-            <div className="min-h-screen w-full bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 flex items-center justify-center p-4 sm:p-6 md:p-8" style={mathBg}>
+            <div className="min-h-screen w-full bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 flex items-center justify-center p-4 sm:p-6 md:p--8" style={mathBg}>
               <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-2xl border-4 border-purple-400 relative overflow-hidden fade-in">
                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400"></div>
 
@@ -547,18 +525,6 @@
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-2 mb-5 sm:mb-6 bg-gradient-to-r from-yellow-100 to-orange-100 p-3 rounded-2xl border-2 border-yellow-400 shadow-inner">
-                  <span className="text-xl sm:text-2xl">⭐</span>
-                  <span className="text-base sm:text-lg font-black text-orange-700 whitespace-nowrap">
-                    Серия: {streak} 🔥
-                  </span>
-                  {bestStreak > 0 && (
-                    <span className="text-xs sm:text-sm font-bold text-orange-600 whitespace-nowrap">
-                      (макс: {bestStreak})
-                    </span>
-                  )}
-                </div>
-
                 <div className="bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 rounded-3xl p-4 sm:p-6 mb-5 sm:mb-6 border-3 border-purple-300 shadow-xl">
                   <div className="flex justify-center gap-3 mb-4">
                     {[...Array(2)].map((_, i) => (
@@ -592,49 +558,4 @@
                           setAnswer(value);
                         }}
                         onKeyPress={handleKeyPress}
-                        className="w-20 sm:w-24 text-4xl sm:text-5xl text-center border-4 border-purple-400 rounded-xl p-2 focus:outline-none focus:border-pink-500 font-black text-purple-700 bg-yellow-50 shadow-lg"
-                        placeholder="?"
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={checkAnswer}
-                    disabled={answer === ''}
-                    className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 text-white text-lg sm:text-xl font-black py-3 sm:py-4 rounded-2xl hover:from-purple-600 hover:via-pink-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 shadow-lg"
-                  >
-                    ПРОВЕРИТЬ ✨
-                  </button>
-                </div>
-
-                {message && (
-                  <div className={`text-center text-lg sm:text-xl font-black mb-4 p-3 sm:p-4 rounded-2xl border-3 shadow-lg ${
-                    message.includes('Правильно')
-                      ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-400'
-                      : message.includes('Подумай')
-                      ? 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-700 border-yellow-400'
-                      : 'bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border-red-400'
-                  }`}>
-                    {message}
-                  </div>
-                )}
-
-                {score >= 5 && currentRound < totalRounds && (
-                  <div className="mt-4 sm:mt-6 text-center bg-gradient-to-r from-yellow-100 to-orange-100 p-3 sm:p-4 rounded-2xl border-2 border-yellow-400 shadow-lg">
-                    <div className="text-3xl sm:text-4xl mb-2">🏆</div>
-                    <div className="text-yellow-800 font-black text-base sm:text-lg">
-                      ⭐ Супер! Ты отлично справляешься! ⭐
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(MultiplicationGame));
-    </script>
-</body>
-</html>
+                        className="w-20 sm:w-24 text-4xl sm:text-5xl text-center border-4 border-purple-400 rounded-xl p-2 focus:outline-none focus:border-pink-500 font-black text-purple-700 bg-yellow-50 shadow-lg
