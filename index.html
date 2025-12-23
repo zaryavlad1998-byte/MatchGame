@@ -9,553 +9,538 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-
+        body { margin: 0; padding: 0; overflow-x: hidden; }
+        * { box-sizing: border-box; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-
-        input[type="number"] {
-            -moz-appearance: textfield;
-        }
-
-        .home-button {
-            transition: all 0.3s ease;
-        }
-
-        .home-button:hover {
-            transform: scale(1.1);
-        }
-
-        .home-button:active {
-            transform: scale(0.95);
-        }
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
+        .home-button { transition: all 0.3s ease; }
+        .home-button:hover { transform: scale(1.1); }
+        .home-button:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="text/babel">
-        const { useState, useEffect, useRef, useCallback, useMemo } = React;
+<div id="root"></div>
 
-        function MultiplicationGame() {
-          const [gameState, setGameState] = useState('setup');
-          const [totalRounds, setTotalRounds] = useState(10);
-          const [operations, setOperations] = useState({
-            multiply: true,
-            divide: false,
-            add: false,
-            subtract: false
-          });
-          const [num1, setNum1] = useState(0);
-          const [num2, setNum2] = useState(0);
-          const [currentOperation, setCurrentOperation] = useState('×');
-          const [answer, setAnswer] = useState('');
-          const [score, setScore] = useState(0);
-          const [currentRound, setCurrentRound] = useState(0);
-          const [message, setMessage] = useState('');
-          const [soundEnabled, setSoundEnabled] = useState(true);
-          const [attempts, setAttempts] = useState(2);
-          const [lives, setLives] = useState(2);
-          const [gameHistory, setGameHistory] = useState([]);
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
-          const audioContextRef = useRef(null);
+function MultiplicationGame() {
+  const [gameState, setGameState] = useState('setup');
+  const [totalRounds, setTotalRounds] = useState(10);
+  const [operations, setOperations] = useState({
+    multiply: true,
+    divide: false,
+    add: false,
+    subtract: false
+  });
+  const [num1, setNum1] = useState(0);
+  const [num2, setNum2] = useState(0);
+  const [currentOperation, setCurrentOperation] = useState('×');
+  const [answer, setAnswer] = useState('');
+  const [score, setScore] = useState(0);
+  const [currentRound, setCurrentRound] = useState(0);
+  const [message, setMessage] = useState('');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [attempts, setAttempts] = useState(2);
+  const [lives, setLives] = useState(2);
+  const [gameHistory, setGameHistory] = useState([]);
 
-          useEffect(() => {
-            try {
-              audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-            } catch (e) {
-              console.log('Audio not supported');
-            }
-          }, []);
+  const audioContextRef = useRef(null);
 
-          const speak = useCallback((text) => {
-            if (!soundEnabled) return;
-            try {
-              window.speechSynthesis.cancel();
-              const utterance = new SpeechSynthesisUtterance(text);
-              utterance.lang = 'ru-RU';
-              utterance.rate = 0.9;
-              utterance.pitch = 1.2;
-              utterance.volume = 1;
-              window.speechSynthesis.speak(utterance);
-            } catch (e) {
-              console.log('Speech not supported');
-            }
-          }, [soundEnabled]);
+  useEffect(() => {
+    try {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      console.log('Audio not supported');
+    }
+  }, []);
 
-          const playSound = useCallback((frequency, duration, type = 'sine') => {
-            if (!soundEnabled || !audioContextRef.current) return;
-            try {
-              const ctx = audioContextRef.current;
-              const oscillator = ctx.createOscillator();
-              const gainNode = ctx.createGain();
+  const speak = useCallback((text) => {
+    if (!soundEnabled) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ru-RU';
+      utterance.rate = 0.9;
+      utterance.pitch = 1.2;
+      utterance.volume = 1;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.log('Speech not supported');
+    }
+  }, [soundEnabled]);
 
-              oscillator.connect(gainNode);
-              gainNode.connect(ctx.destination);
-              oscillator.frequency.value = frequency;
-              oscillator.type = type;
-              gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-              gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-              oscillator.start(ctx.currentTime);
-              oscillator.stop(ctx.currentTime + duration);
-            } catch (e) {
-              console.log('Sound error:', e);
-            }
-          }, [soundEnabled]);
+  const playSound = useCallback((frequency, duration, type = 'sine') => {
+    if (!soundEnabled || !audioContextRef.current) return;
+    try {
+      const ctx = audioContextRef.current;
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.frequency.value = frequency;
+      oscillator.type = type;
+      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + duration);
+    } catch (e) {
+      console.log('Sound error:', e);
+    }
+  }, [soundEnabled]);
 
-          const playCorrectSound = useCallback(() => {
-            playSound(523.25, 0.1);
-            setTimeout(() => playSound(659.25, 0.1), 100);
-            setTimeout(() => playSound(783.99, 0.2), 200);
-          }, [playSound]);
+  const playCorrectSound = useCallback(() => {
+    playSound(523.25, 0.1);
+    setTimeout(() => playSound(659.25, 0.1), 100);
+    setTimeout(() => playSound(783.99, 0.2), 200);
+  }, [playSound]);
 
-          const playWrongSound = useCallback(() => {
-            playSound(200, 0.3, 'sawtooth');
-          }, [playSound]);
+  const playWrongSound = useCallback(() => {
+    playSound(200, 0.3, 'sawtooth');
+  }, [playSound]);
 
-          const toggleOperation = useCallback((op) => {
-            setOperations(prev => {
-              const newOps = { ...prev, [op]: !prev[op] };
-              const hasAtLeastOne = Object.values(newOps).some(v => v);
-              return hasAtLeastOne ? newOps : prev;
-            });
-          }, []);
+  const toggleOperation = useCallback((op) => {
+    setOperations(prev => {
+      const newOps = { ...prev, [op]: !prev[op] };
+      const hasAtLeastOne = Object.values(newOps).some(v => v);
+      return hasAtLeastOne ? newOps : prev;
+    });
+  }, []);
 
-          const goHome = useCallback(() => {
-            if (gameState === 'playing') {
-              const confirmed = window.confirm('Вы уверены, что хотите выйти? Прогресс игры будет потерян.');
-              if (!confirmed) return;
-            }
+  const goHome = useCallback(() => {
+    if (gameState === 'playing') {
+      const confirmed = window.confirm('Вы уверены, что хотите выйти? Прогресс игры будет потерян.');
+      if (!confirmed) return;
+    }
+    setGameState('setup');
+    setScore(0);
+    setCurrentRound(0);
+    setGameHistory([]);
+    setMessage('');
+    setAnswer('');
+  }, [gameState]);
 
-            setGameState('setup');
-            setScore(0);
-            setCurrentRound(0);
-            setGameHistory([]);
-            setMessage('');
-            setAnswer('');
-          }, [gameState]);
+  const generateQuestion = useCallback((incrementRound = false) => {
+    if (incrementRound) setCurrentRound(prev => prev + 1);
 
-          const generateQuestion = useCallback((incrementRound = false) => {
-            if (incrementRound) {
-              setCurrentRound(prev => prev + 1);
-            }
+    const activeOps = [];
+    if (operations.multiply) activeOps.push('×');
+    if (operations.divide) activeOps.push('÷');
+    if (operations.add) activeOps.push('+');
+    if (operations.subtract) activeOps.push('−');
 
-            const activeOps = [];
-            if (operations.multiply) activeOps.push('×');
-            if (operations.divide) activeOps.push('÷');
-            if (operations.add) activeOps.push('+');
-            if (operations.subtract) activeOps.push('−');
+    const op = activeOps[Math.floor(Math.random() * activeOps.length)];
+    setCurrentOperation(op);
 
-            const op = activeOps[Math.floor(Math.random() * activeOps.length)];
-            setCurrentOperation(op);
+    let n1, n2;
+    if (op === '÷') {
+      n2 = Math.floor(Math.random() * 9) + 2;
+      const result = Math.floor(Math.random() * 10) + 1;
+      n1 = n2 * result;
+    } else if (op === '−') {
+      n1 = Math.floor(Math.random() * 10) + 11;
+      n2 = Math.floor(Math.random() * 10) + 1;
+      if (n2 >= n1) n2 = n1 - 1;
+    } else {
+      n1 = Math.floor(Math.random() * 10) + 1;
+      n2 = Math.floor(Math.random() * 10) + 1;
+    }
 
-            let n1, n2;
-            if (op === '÷') {
-              n2 = Math.floor(Math.random() * 9) + 2;
-              const result = Math.floor(Math.random() * 10) + 1;
-              n1 = n2 * result;
-            } else if (op === '−') {
-              n1 = Math.floor(Math.random() * 10) + 11;
-              n2 = Math.floor(Math.random() * 10) + 1;
-              if (n2 >= n1) n2 = n1 - 1;
-            } else {
-              n1 = Math.floor(Math.random() * 10) + 1;
-              n2 = Math.floor(Math.random() * 10) + 1;
-            }
+    setNum1(n1);
+    setNum2(n2);
+    setAnswer('');
+    setMessage('');
+    setAttempts(1);
+    setLives(2);
+  }, [operations]);
 
-            setNum1(n1);
-            setNum2(n2);
-            setAnswer('');
-            setMessage('');
-            setAttempts(1);
-            setLives(2);
-          }, [operations]);
+  const startGame = useCallback(() => {
+    setGameState('playing');
+    setScore(0);
+    setCurrentRound(0);
+    setGameHistory([]);
+    setMessage('');
+    generateQuestion();
+  }, [generateQuestion]);
 
-          const startGame = useCallback(() => {
-            setGameState('playing');
-            setScore(0);
-            setCurrentRound(0);
-            setGameHistory([]);
-            setMessage('');
-            generateQuestion();
-          }, [generateQuestion]);
+  const calculateCorrectAnswer = useCallback(() => {
+    switch (currentOperation) {
+      case '×': return num1 * num2;
+      case '÷': return num1 / num2;
+      case '+': return num1 + num2;
+      case '−': return num1 - num2;
+      default: return 0;
+    }
+  }, [currentOperation, num1, num2]);
 
-          const calculateCorrectAnswer = useCallback(() => {
-            switch(currentOperation) {
-              case '×': return num1 * num2;
-              case '÷': return num1 / num2;
-              case '+': return num1 + num2;
-              case '−': return num1 - num2;
-              default: return 0;
-            }
-          }, [currentOperation, num1, num2]);
+  const showResults = useCallback(() => {
+    setGameState('results');
+  }, []);
 
-          const showResults = useCallback(() => {
-            setGameState('results');
-          }, []);
+  const checkAnswer = useCallback(() => {
+    const userAnswer = parseInt(answer);
+    const correctAnswer = calculateCorrectAnswer();
+    const isCorrect = userAnswer === correctAnswer;
+    const questionKey = `${num1} ${currentOperation} ${num2}`;
 
-          const checkAnswer = useCallback(() => {
-            const userAnswer = parseInt(answer);
-            const correctAnswer = calculateCorrectAnswer();
-            const isCorrect = userAnswer === correctAnswer;
-            const questionKey = `${num1} ${currentOperation} ${num2}`;
+    if (isCorrect) {
+      playCorrectSound();
+      speak('Правильно! Ты молодец!');
+      setScore(prev => prev + 1);
+      setMessage('🎉 Правильно! Ты молодец!');
 
-            if (isCorrect) {
-              playCorrectSound();
-              speak('Правильно! Ты молодец!');
-              setScore(prev => prev + 1);
-              setMessage('🎉 Правильно! Ты молодец!');
+      setGameHistory(prev => {
+        const existingWrong = prev.find(h => h.question === questionKey && h.hadMistake === true);
+        if (existingWrong) {
+          return prev.map(h =>
+            h.question === questionKey
+              ? { ...h, solvedCorrectlyAfter: userAnswer }
+              : h
+          );
+        }
+        return [...prev, {
+          question: questionKey,
+          userAnswer,
+          correctAnswer,
+          isCorrect: true,
+          wrongAnswers: [],
+          hadMistake: false
+        }];
+      });
 
-              setGameHistory(prev => {
-                const existingWrong = prev.find(h => h.question === questionKey && !h.isCorrect);
-                if (existingWrong) {
-                  return prev.map(h =>
-                    h.question === questionKey && !h.isCorrect
-                      ? { ...h, solvedCorrectlyAfter: userAnswer }
-                      : h
-                  );
-                }
-                return [...prev, {
-                  question: questionKey,
-                  userAnswer,
-                  correctAnswer,
-                  isCorrect: true,
-                  wrongAnswers: []
-                }];
-              });
+      const nextRound = currentRound + 1;
+      if (nextRound >= totalRounds) {
+        setTimeout(showResults, 2000);
+      } else {
+        setTimeout(() => generateQuestion(true), 2000);
+      }
+    } else {
+      if (attempts > 0) {
+        playWrongSound();
+        speak('Подумай ещё');
+        setAttempts(prev => prev - 1);
+        setLives(prev => prev - 1);
+        setMessage('🤔 Подумай ещё');
 
-              const nextRound = currentRound + 1;
-              if (nextRound >= totalRounds) {
-                setTimeout(showResults, 2000);
-              } else {
-                setTimeout(() => generateQuestion(true), 2000);
-              }
-            } else {
-              if (attempts > 0) {
-                playWrongSound();
-                speak('Подумай ещё');
-                setAttempts(prev => prev - 1);
-                setLives(prev => prev - 1);
-                setMessage('🤔 Подумай ещё');
+        setGameHistory(prev => {
+          const existingEntry = prev.find(h => h.question === questionKey);
+          const wrongAnswers = existingEntry?.wrongAnswers ? [...existingEntry.wrongAnswers, userAnswer] : [userAnswer];
+          const filtered = prev.filter(h => h.question !== questionKey);
+          return [...filtered, {
+            question: questionKey,
+            userAnswer,
+            correctAnswer,
+            isCorrect: false,
+            wrongAnswers,
+            hadMistake: true
+          }];
+        });
 
-                setGameHistory(prev => {
-                  const existingEntry = prev.find(h => h.question === questionKey && !h.isCorrect);
-                  const wrongAnswers = existingEntry?.wrongAnswers ? [...existingEntry.wrongAnswers, userAnswer] : [userAnswer];
-                  const filtered = prev.filter(h => !(h.question === questionKey && !h.isCorrect));
-                  return [...filtered, {
-                    question: questionKey,
-                    userAnswer,
-                    correctAnswer,
-                    isCorrect: false,
-                    wrongAnswers
-                  }];
-                });
-                setAnswer('');
-              } else {
-                playWrongSound();
-                speak(`Неверно. Правильный ответ ${correctAnswer}`);
-                setMessage(`❌ Неверно. Правильный ответ: ${correctAnswer}`);
+        setAnswer('');
+      } else {
+        playWrongSound();
+        speak(`Неверно. Правильный ответ ${correctAnswer}`);
+        setMessage(`❌ Неверно. Правильный ответ: ${correctAnswer}`);
 
-                setGameHistory(prev => {
-                  const existingEntry = prev.find(h => h.question === questionKey && !h.isCorrect);
-                  const wrongAnswers = existingEntry?.wrongAnswers ? [...existingEntry.wrongAnswers, userAnswer] : [userAnswer];
-                  const filtered = prev.filter(h => !(h.question === questionKey && !h.isCorrect));
-                  return [...filtered, {
-                    question: questionKey,
-                    userAnswer,
-                    correctAnswer,
-                    isCorrect: false,
-                    wrongAnswers
-                  }];
-                });
+        setGameHistory(prev => {
+          const existingEntry = prev.find(h => h.question === questionKey);
+          const wrongAnswers = existingEntry?.wrongAnswers ? [...existingEntry.wrongAnswers, userAnswer] : [userAnswer];
+          const filtered = prev.filter(h => h.question !== questionKey);
+          return [...filtered, {
+            question: questionKey,
+            userAnswer,
+            correctAnswer,
+            isCorrect: false,
+            wrongAnswers,
+            hadMistake: true
+          }];
+        });
 
-                const nextRound = currentRound + 1;
-                if (nextRound >= totalRounds) {
-                  setTimeout(showResults, 2500);
-                } else {
-                  setTimeout(() => generateQuestion(true), 2500);
-                }
-              }
-            }
-          }, [answer, calculateCorrectAnswer, num1, num2, currentOperation, attempts, currentRound, totalRounds, playCorrectSound, playWrongSound, speak, showResults, generateQuestion]);
+        const nextRound = currentRound + 1;
+        if (nextRound >= totalRounds) {
+          setTimeout(showResults, 2500);
+        } else {
+          setTimeout(() => generateQuestion(true), 2500);
+        }
+      }
+    }
+  }, [answer, calculateCorrectAnswer, num1, num2, currentOperation, attempts, currentRound, totalRounds, playCorrectSound, playWrongSound, speak, showResults, generateQuestion]);
 
-          const handleKeyPress = useCallback((e) => {
-            if (e.key === 'Enter' && answer !== '') {
-              checkAnswer();
-            }
-          }, [answer, checkAnswer]);
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === 'Enter' && answer !== '') checkAnswer();
+  }, [answer, checkAnswer]);
 
-          const resetGame = useCallback(() => {
-            setGameState('setup');
-            setTotalRounds(10);
-            setScore(0);
-            setCurrentRound(0);
-            setGameHistory([]);
-            setMessage('');
-            setAnswer('');
-          }, []);
+  const resetGame = useCallback(() => {
+    setGameState('setup');
+    setTotalRounds(10);
+    setScore(0);
+    setCurrentRound(0);
+    setGameHistory([]);
+    setMessage('');
+    setAnswer('');
+  }, []);
 
-          const firstTryCorrectCount = useMemo(() => {
-            return gameHistory.filter(item => item.isCorrect).length;
-          }, [gameHistory]);
+  const mistakesCount = useMemo(() => {
+    return gameHistory.filter(item => item.hadMistake === true).length;
+  }, [gameHistory]);
 
-          const percentage = useMemo(() => {
-            return totalRounds > 0 ? Math.round((firstTryCorrectCount / totalRounds) * 100) : 0;
-          }, [firstTryCorrectCount, totalRounds]);
+  const firstTryCorrectCount = useMemo(() => {
+    return gameHistory.filter(item => item.hadMistake === false && item.isCorrect === true).length;
+  }, [gameHistory]);
 
-          const mathBg = useMemo(() => ({
-            backgroundImage: `url("image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='5' y='20' font-size='20' fill='%23e0e7ff' opacity='0.3'%3E+%3C/text%3E%3Ctext x='35' y='45' font-size='20' fill='%23ddd6fe' opacity='0.3'%3E×%3C/text%3E%3Ctext x='15' y='50' font-size='18' fill='%23fce7f3' opacity='0.3'%3E=%3C/text%3E%3C/svg%3E")`,
-            backgroundSize: '60px 60px'
-          }), []);
+  const percentage = useMemo(() => {
+    return totalRounds > 0 ? Math.round((firstTryCorrectCount / totalRounds) * 100) : 0;
+  }, [firstTryCorrectCount, totalRounds]);
 
-          if (gameState === 'setup') {
-            return (
-              <div className="min-h-screen w-full bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 flex items-center justify-center p-4 sm:p-6 md:p-8" style={mathBg}>
-                <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-lg border-4 border-purple-400 relative overflow-hidden fade-in">
-                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400"></div>
+  const mathBg = useMemo(() => ({
+    backgroundImage: `url("image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='5' y='20' font-size='20' fill='%23e0e7ff' opacity='0.3'%3E+%3C/text%3E%3Ctext x='35' y='45' font-size='20' fill='%23ddd6fe' opacity='0.3'%3E×%3C/text%3E%3Ctext x='15' y='50' font-size='18' fill='%23fce7f3' opacity='0.3'%3E=%3C/text%3E%3C/svg%3E")`,
+    backgroundSize: '60px 60px'
+  }), []);
 
-                  <div className="text-center mb-6 sm:mb-8">
-                    <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">🔢</div>
-                    <h1 className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-2">
-                      Математика
-                    </h1>
-                    <p className="text-purple-600 font-bold text-base sm:text-lg">Выбери операции!</p>
-                  </div>
+  if (gameState === 'setup') {
+    return (
+      <div className="min-h-screen w-full bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 flex items-center justify-center p-4 sm:p-6 md:p-8" style={mathBg}>
+        <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-lg border-4 border-purple-400 relative overflow-hidden fade-in">
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400"></div>
 
-                  <div className="mb-5 sm:mb-6 bg-gradient-to-r from-purple-100 to-pink-100 p-4 sm:p-6 rounded-2xl border-2 border-purple-300">
-                    <label className="block text-purple-800 font-bold mb-3 text-center text-base sm:text-lg">
-                      🎯 Какие операции?
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { key: 'multiply', label: '×', color: 'purple' },
-                        { key: 'divide', label: '÷', color: 'blue' },
-                        { key: 'add', label: '+', color: 'green' },
-                        { key: 'subtract', label: '−', color: 'orange' }
-                      ].map(({ key, label, color }) => (
-                        <button
-                          key={key}
-                          onClick={() => toggleOperation(key)}
-                          className={`py-3 sm:py-4 rounded-xl font-black text-xl sm:text-2xl transition-all transform hover:scale-105 ${
-                            operations[key]
-                              ? `bg-gradient-to-br from-${color}-500 to-${color}-600 text-white shadow-lg`
-                              : `bg-white text-${color}-500 border-2 border-${color}-300`
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">🔢</div>
+            <h1 className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-2">Математика</h1>
+            <p className="text-purple-600 font-bold text-base sm:text-lg">Выбери операции!</p>
+          </div>
 
-                  <div className="mb-5 sm:mb-6 bg-gradient-to-r from-purple-100 to-pink-100 p-4 sm:p-6 rounded-2xl border-2 border-purple-300">
-                    <label className="block text-purple-800 font-bold mb-3 text-center text-base sm:text-lg">
-                      📝 Сколько примеров?
-                    </label>
-                    <div className="text-center mb-4">
-                      <span className="text-5xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-                        {totalRounds}
+          <div className="mb-5 sm:mb-6 bg-gradient-to-r from-purple-100 to-pink-100 p-4 sm:p-6 rounded-2xl border-2 border-purple-300">
+            <label className="block text-purple-800 font-bold mb-3 text-center text-base sm:text-lg">🎯 Какие операции?</label>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'multiply', label: '×', color: 'purple' },
+                { key: 'divide', label: '÷', color: 'blue' },
+                { key: 'add', label: '+', color: 'green' },
+                { key: 'subtract', label: '−', color: 'orange' }
+              ].map(({ key, label, color }) => (
+                <button
+                  key={key}
+                  onClick={() => toggleOperation(key)}
+                  className={`py-3 sm:py-4 rounded-xl font-black text-xl sm:text-2xl transition-all transform hover:scale-105 ${
+                    operations[key]
+                      ? `bg-gradient-to-br from-${color}-500 to-${color}-600 text-white shadow-lg`
+                      : `bg-white text-${color}-500 border-2 border-${color}-300`
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-5 sm:mb-6 bg-gradient-to-r from-purple-100 to-pink-100 p-4 sm:p-6 rounded-2xl border-2 border-purple-300">
+            <label className="block text-purple-800 font-bold mb-3 text-center text-base sm:text-lg">📝 Сколько примеров?</label>
+            <div className="text-center mb-4">
+              <span className="text-5xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">{totalRounds}</span>
+            </div>
+            <input
+              type="range"
+              value={totalRounds}
+              onChange={(e) => setTotalRounds(parseInt(e.target.value))}
+              min="5"
+              max="50"
+              step="5"
+              className="w-full h-4 rounded-full appearance-none cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, #a855f7 0%, #ec4899 ${(totalRounds - 5) / 45 * 100}%, #e9d5ff ${(totalRounds - 5) / 45 * 100}%, #fce7f3 100%)`
+              }}
+            />
+            <div className="flex justify-between text-sm text-purple-600 mt-2 font-semibold">
+              <span>5</span>
+              <span>25</span>
+              <span>50</span>
+            </div>
+          </div>
+
+          <button
+            onClick={startGame}
+            className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 text-white text-xl sm:text-2xl font-black py-4 sm:py-5 rounded-2xl hover:from-purple-600 hover:via-pink-600 hover:to-purple-600 transition-all transform hover:scale-105 flex items-center justify-center gap-3 shadow-lg"
+          >
+            ▶ ПОЕХАЛИ!
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (gameState === 'results') {
+    const grade = percentage >= 90 ? '🏆' : percentage >= 70 ? '⭐' : percentage >= 50 ? '👍' : '💪';
+
+    return (
+      <div className="min-h-screen w-full bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 flex items-center justify-center p-4 sm:p-6 md:p-8" style={mathBg}>
+        <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-3xl border-4 border-purple-400 relative overflow-hidden fade-in">
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400"></div>
+
+          <div className="text-center mb-6">
+            <div className="text-7xl sm:text-8xl mb-4">{grade}</div>
+            <h1 className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-2">Игра Завершена!</h1>
+            <p className="text-xl sm:text-2xl font-bold text-purple-600">
+              {percentage >= 90 ? 'Отлично!' : percentage >= 70 ? 'Хорошо!' : percentage >= 50 ? 'Неплохо!' : 'Продолжай тренироваться!'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+            <div className="bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
+              <div className="text-3xl sm:text-4xl font-black text-white">{firstTryCorrectCount}</div>
+              <div className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">✓ С 1 раза</div>
+            </div>
+            <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
+              <div className="text-3xl sm:text-4xl font-black text-white">{totalRounds}</div>
+              <div className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">📝 Всего</div>
+            </div>
+            <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
+              <div className="text-3xl sm:text-4xl font-black text-white">{percentage}%</div>
+              <div className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">📊 Процент</div>
+            </div>
+          </div>
+
+          <div className="mb-6 max-h-80 overflow-y-auto bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-3 sm:p-4 border-2 border-purple-300">
+            <h3 className="font-black text-purple-700 mb-3 text-center text-lg sm:text-xl">✨ Твои результаты ✨</h3>
+            <div className="space-y-2">
+              {gameHistory.map((item, index) => (
+                <div key={index} className={`flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 px-3 sm:px-4 rounded-xl shadow-md font-bold text-base sm:text-lg ${
+                  item.hadMistake ? 'bg-gradient-to-r from-red-100 to-rose-100 border-2 border-red-400' : 'bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-400'
+                }`}>
+                  <span className="text-purple-900">
+                    {index + 1}. {item.question} = {item.correctAnswer}
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {item.hadMistake && item.wrongAnswers && item.wrongAnswers.length > 0 && (
+                      <span className="text-xs sm:text-sm text-red-600 bg-red-50 px-2 py-1 rounded border border-red-300 whitespace-nowrap">
+                        Попытки: {item.wrongAnswers.join(', ')}
                       </span>
-                    </div>
-                    <input
-                      type="range"
-                      value={totalRounds}
-                      onChange={(e) => setTotalRounds(parseInt(e.target.value))}
-                      min="5"
-                      max="50"
-                      step="5"
-                      className="w-full h-4 rounded-full appearance-none cursor-pointer"
-                      style={{
-                        background: `linear-gradient(to right, #a855f7 0%, #ec4899 ${(totalRounds - 5) / 45 * 100}%, #e9d5ff ${(totalRounds - 5) / 45 * 100}%, #fce7f3 100%)`
-                      }}
-                    />
-                    <div className="flex justify-between text-sm text-purple-600 mt-2 font-semibold">
-                      <span>5</span>
-                      <span>25</span>
-                      <span>50</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={startGame}
-                    className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 text-white text-xl sm:text-2xl font-black py-4 sm:py-5 rounded-2xl hover:from-purple-600 hover:via-pink-600 hover:to-purple-600 transition-all transform hover:scale-105 flex items-center justify-center gap-3 shadow-lg"
-                  >
-                    ▶ ПОЕХАЛИ!
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
-          if (gameState === 'results') {
-            const grade = percentage >= 90 ? '🏆' : percentage >= 70 ? '⭐' : percentage >= 50 ? '👍' : '💪';
-
-            return (
-              <div className="min-h-screen w-full bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 flex items-center justify-center p-4 sm:p-6 md:p-8" style={mathBg}>
-                <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-3xl border-4 border-purple-400 relative overflow-hidden fade-in">
-                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400"></div>
-
-                  <div className="text-center mb-6">
-                    <div className="text-7xl sm:text-8xl mb-4">{grade}</div>
-                    <h1 className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-2">
-                      Игра Завершена!
-                    </h1>
-                    <p className="text-xl sm:text-2xl font-bold text-purple-600">
-                      {percentage >= 90 ? 'Отлично!' : percentage >= 70 ? 'Хорошо!' : percentage >= 50 ? 'Неплохо!' : 'Продолжай тренироваться!'}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
-                    <div className="bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
-                      <div className="text-3xl sm:text-4xl font-black text-white">{firstTryCorrectCount}</div>
-                      <div className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">✓ С 1 раза</div>
-                    </div>
-                    <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
-                      <div className="text-3xl sm:text-4xl font-black text-white">{totalRounds}</div>
-                      <div className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">📝 Всего</div>
-                    </div>
-                    <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
-                      <div className="text-3xl sm:text-4xl font-black text-white">{percentage}%</div>
-                      <div className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">📊 Процент</div>
-                    </div>
-                  </div>
-
-                  <div className="mb-6 max-h-80 overflow-y-auto bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-3 sm:p-4 border-2 border-purple-300">
-                    <h3 className="font-black text-purple-700 mb-3 text-center text-lg sm:text-xl">
-                      ✨ Твои результаты ✨
-                    </h3>
-                    <div className="space-y-2">
-                      {gameHistory.map((item, index) => (
-                        <div key={index} className={`flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 px-3 sm:px-4 rounded-xl shadow-md font-bold text-base sm:text-lg ${
-                          item.isCorrect ? 'bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-400' : 'bg-gradient-to-r from-red-100 to-rose-100 border-2 border-red-400'
-                        }`}>
-                          <span className="text-purple-900">
-                            {index + 1}. {item.question} = {item.correctAnswer}
-                          </span>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {!item.isCorrect && item.wrongAnswers && item.wrongAnswers.length > 0 && (
-                              <span className="text-xs sm:text-sm text-red-600 bg-red-50 px-2 py-1 rounded border border-red-300 whitespace-nowrap">
-                                Попытки: {item.wrongAnswers.join(', ')}
-                              </span>
-                            )}
-                            {item.solvedCorrectlyAfter !== undefined && (
-                              <span className="text-xs sm:text-sm text-green-700 bg-green-50 px-2 py-1 rounded border border-green-300 whitespace-nowrap">
-                                Потом верно: {item.solvedCorrectlyAfter}
-                              </span>
-                            )}
-                            <span className={`text-xl sm:text-2xl ${item.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                              {item.isCorrect ? '✓' : '✗'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={resetGame}
-                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 text-white font-black py-4 sm:py-5 text-lg sm:text-xl rounded-2xl hover:from-purple-600 hover:via-pink-600 hover:to-purple-600 transition-all shadow-lg"
-                  >
-                    🔄 ИГРАТЬ СНОВА!
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
-          return (
-            <div className="min-h-screen w-full bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 flex items-center justify-center p-4 sm:p-6 md:p--8" style={mathBg}>
-              <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-2xl border-4 border-purple-400 relative overflow-hidden fade-in">
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400"></div>
-
-                <div className="text-center mb-5 sm:mb-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <button
-                      onClick={goHome}
-                      className="home-button text-3xl sm:text-4xl bg-transparent border-none cursor-pointer"
-                      title="Вернуться на главную"
-                    >
-                      🏠
-                    </button>
-                    <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 flex-1 whitespace-nowrap">
-                      🔢 Математика 🔢
-                    </h1>
-                    <button
-                      onClick={() => setSoundEnabled(!soundEnabled)}
-                      className="text-2xl sm:text-3xl bg-transparent border-none cursor-pointer"
-                      title={soundEnabled ? 'Выключить звук' : 'Включить звук'}
-                    >
-                      {soundEnabled ? '🔊' : '🔇'}
-                    </button>
-                  </div>
-                  <p className="text-purple-600 font-bold text-base sm:text-lg">Пример {currentRound + 1} из {totalRounds}</p>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5 sm:mb-6">
-                  <div className="bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl p-3 text-center shadow-lg">
-                    <div className="text-xl sm:text-2xl font-black text-white">{score}</div>
-                    <div className="text-xs font-bold text-white whitespace-nowrap">✓ Верно</div>
-                  </div>
-                  <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl p-3 text-center shadow-lg">
-                    <div className="text-xl sm:text-2xl font-black text-white">{currentRound}</div>
-                    <div className="text-xs font-bold text-white whitespace-nowrap">📝 Решено</div>
-                  </div>
-                  <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-3 text-center shadow-lg">
-                    <div className="text-xl sm:text-2xl font-black text-white">{percentage}%</div>
-                    <div className="text-xs font-bold text-white">📊</div>
+                    )}
+                    {item.solvedCorrectlyAfter !== undefined && (
+                      <span className="text-xs sm:text-sm text-green-700 bg-green-50 px-2 py-1 rounded border border-green-300 whitespace-nowrap">
+                        Потом верно: {item.solvedCorrectlyAfter}
+                      </span>
+                    )}
+                    <span className={`text-xl sm:text-2xl ${item.hadMistake ? 'text-red-600' : 'text-green-600'}`}>
+                      {item.hadMistake ? '✗' : '✓'}
+                    </span>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <div className="bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 rounded-3xl p-4 sm:p-6 mb-5 sm:mb-6 border-3 border-purple-300 shadow-xl">
-                  <div className="flex justify-center gap-3 mb-4">
-                    {[...Array(2)].map((_, i) => (
-                      <span key={i} className="text-3xl sm:text-4xl">
-                        {lives > i ? '❤️' : '🤍'}
-                      </span>
-                    ))}
-                  </div>
+          <button
+            onClick={resetGame}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 text-white font-black py-4 sm:py-5 text-lg sm:text-xl rounded-2xl hover:from-purple-600 hover:via-pink-600 hover:to-purple-600 transition-all shadow-lg"
+          >
+            🔄 ИГРАТЬ СНОВА!
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-                  <div className="text-center mb-5 sm:mb-6 bg-white p-4 sm:p-5 rounded-2xl border-3 border-purple-300 shadow-inner">
-                    <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
-                      <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-                        {num1}
-                      </span>
-                      <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-                        {currentOperation}
-                      </span>
-                      <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-                        {num2}
-                      </span>
-                      <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-                        =
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9-]*"
-                        value={answer}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9-]/g, '');
-                          setAnswer(value);
-                        }}
-                        onKeyPress={handleKeyPress}
-                        className="w-20 sm:w-24 text-4xl sm:text-5xl text-center border-4 border-purple-400 rounded-xl p-2 focus:outline-none focus:border-pink-500 font-black text-purple-700 bg-yellow-50 shadow-lg
+  return (
+    <div className="min-h-screen w-full bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 flex items-center justify-center p-4 sm:p-6 md:p-8" style={mathBg}>
+      <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-2xl border-4 border-purple-400 relative overflow-hidden fade-in">
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400"></div>
+
+        <div className="text-center mb-5 sm:mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={goHome} className="home-button text-3xl sm:text-4xl bg-transparent border-none cursor-pointer" title="Вернуться на главную">🏠</button>
+            <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 flex-1 whitespace-nowrap">🔢 Математика 🔢</h1>
+            <button onClick={() => setSoundEnabled(!soundEnabled)} className="text-2xl sm:text-3xl bg-transparent border-none cursor-pointer" title={soundEnabled ? 'Выключить звук' : 'Включить звук'}>{soundEnabled ? '🔊' : '🔇'}</button>
+          </div>
+          <p className="text-purple-600 font-bold text-base sm:text-lg">Пример {currentRound + 1} из {totalRounds}</p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5 sm:mb-6">
+          <div className="bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl p-3 text-center shadow-lg">
+            <div className="text-xl sm:text-2xl font-black text-white">{score}</div>
+            <div className="text-xs font-bold text-white whitespace-nowrap">✓ Верно</div>
+          </div>
+          <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl p-3 text-center shadow-lg">
+            <div className="text-xl sm:text-2xl font-black text-white">{currentRound}</div>
+            <div className="text-xs font-bold text-white whitespace-nowrap">📝 Решено</div>
+          </div>
+          <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-3 text-center shadow-lg">
+            <div className="text-xl sm:text-2xl font-black text-white">{percentage}%</div>
+            <div className="text-xs font-bold text-white">📊</div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 rounded-3xl p-4 sm:p-6 mb-5 sm:mb-6 border-3 border-purple-300 shadow-xl">
+          <div className="flex justify-center gap-3 mb-4">
+            {[...Array(2)].map((_, i) => (
+              <span key={i} className="text-3xl sm:text-4xl">
+                {lives > i ? '❤️' : '🤍'}
+              </span>
+            ))}
+          </div>
+
+          <div className="text-center mb-5 sm:mb-6 bg-white p-4 sm:p-5 rounded-2xl border-3 border-purple-300 shadow-inner">
+            <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+              <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">{num1}</span>
+              <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">{currentOperation}</span>
+              <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">{num2}</span>
+              <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">=</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9-]*"
+                value={answer}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9-]/g, '');
+                  setAnswer(value);
+                }}
+                onKeyPress={handleKeyPress}
+                className="w-20 sm:w-24 text-4xl sm:text-5xl text-center border-4 border-purple-400 rounded-xl p-2 focus:outline-none focus:border-pink-500 font-black text-purple-700 bg-yellow-50 shadow-lg"
+                placeholder="?"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={checkAnswer}
+            disabled={answer === ''}
+            className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 text-white text-lg sm:text-xl font-black py-3 sm:py-4 rounded-2xl hover:from-purple-600 hover:via-pink-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 shadow-lg"
+          >
+            ПРОВЕРИТЬ ✨
+          </button>
+        </div>
+
+        {message && (
+          <div className={`text-center text-lg sm:text-xl font-black mb-4 p-3 sm:p-4 rounded-2xl border-3 shadow-lg ${
+            message.includes('Правильно')
+              ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-400'
+              : message.includes('Подумай')
+              ? 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-700 border-yellow-400'
+              : 'bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border-red-400'
+          }`}>
+            {message}
+          </div>
+        )}
+
+        {score >= 5 && currentRound < totalRounds && (
+          <div className="mt-4 sm:mt-6 text-center bg-gradient-to-r from-yellow-100 to-orange-100 p-3 sm:p-4 rounded-2xl border-2 border-yellow-400 shadow-lg">
+            <div className="text-3xl sm:text-4xl mb-2">🏆</div>
+            <div className="text-yellow-800 font-black text-base sm:text-lg">⭐ Супер! Ты отлично справляешься! ⭐</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(MultiplicationGame));
+</script>
+</body>
+</html>
